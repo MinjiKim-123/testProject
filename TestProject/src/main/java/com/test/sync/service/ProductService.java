@@ -6,8 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.test.sycn.redis.dto.ProductStock;
 import com.test.sync.entity.Product;
+import com.test.sync.redis.dto.ProductStock;
 import com.test.sync.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;

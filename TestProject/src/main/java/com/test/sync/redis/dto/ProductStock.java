@@ -1,4 +1,4 @@
-package com.test.sycn.redis.dto;
+package com.test.sync.redis.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
