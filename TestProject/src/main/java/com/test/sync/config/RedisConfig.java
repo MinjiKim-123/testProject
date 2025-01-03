@@ -26,6 +26,14 @@ public class RedisConfig {
 	}
 
 	@Bean
+	RedisTemplate<String, Object> redisTemplate(){
+		RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
+		redisTemplate.setConnectionFactory(redisConnectionFactory());
+		redisTemplate.setDefaultSerializer(new StringRedisSerializer());
+		return redisTemplate;
+	}
+	
+	@Bean
 	RedissonClient redissonClient() {
 		 Config config = new Config();
 		 String address = "redis://" + host + ":" + port;

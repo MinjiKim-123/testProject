@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.test.sync.entity.Product;
-import com.test.sync.redis.dto.ProductStock;
+import com.test.sync.entity.redis.ProductStock;
 import com.test.sync.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -37,16 +37,15 @@ public class ProductService {
 	}
 	
 	@Transactional
-	public void updateProuctStock(int price, int stock) {		
-		Product product = productRepository.findById(1);
-  	
+	public void updateProuctStock(int productId, int stock) throws JsonProcessingException {		
+		Product product = productRepository.findById(productId);
 		if (product == null) {
 			product = Product.builder()
-					.id(1)
+					.id(productId)
 					.build();
 		}
-		
-  	product.setStock(100);
+  	product.setStock(stock);
+  	saveProductStockToRedis(productId, stock);
 	}
 
 	

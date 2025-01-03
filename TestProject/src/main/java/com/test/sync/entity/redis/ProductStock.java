@@ -1,4 +1,6 @@
-package com.test.sync.redis.dto;
+package com.test.sync.entity.redis;
+
+import org.springframework.data.redis.core.RedisHash;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +17,9 @@ public class ProductStock {
 	
 	private Integer stock;
 	
+	/**
+	 * 재고 감소
+	 */
 	public void decreaseStock() {
 		if(this.stock <= 0)
 			throw new IllegalArgumentException("This product is out of stock.");
@@ -22,6 +27,9 @@ public class ProductStock {
 		this.stock--;
 	}
 	
+	/**
+	 * 재고 증가
+	 */
 	public void increaseStock() {
 		this.stock++;
 	}

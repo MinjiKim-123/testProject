@@ -2,98 +2,115 @@ package com.test.sync.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.NoSuchElementException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.redis.core.RedisTemplate;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.test.sync.SyncApplication;
-import com.test.sync.entity.Product;
-import com.test.sync.repository.ProductRepository;
 
 @SpringBootTest(classes = SyncApplication.class)
 class OrderServiceTest {
-	
+
 	@Autowired
 	ProductService productService;
-	
-	@Autowired
-	ProductRepository productRepository;
-	
+
 	@Autowired
 	OrderService orderService;
-	
-  @BeforeEach
-  @Transactional
-  void initProductStock(){
-  	productService.updateProuctStock(1, 100);
-  }
-  
-	@Test
-	void testOrderWithOnlyJPALock() throws InterruptedException {
-		int productId = 1;
-		
-		int threadCount = 300;
 
-    ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-    CountDownLatch latch = new CountDownLatch(threadCount);
+	@Autowired
+	RedisTemplate<String, Object> redisTemplate;
 
-    for (int i = 1; i <= threadCount; i++) {
-        executorService.submit(() -> {
-            try {
-              orderService.orderWithOnlyJPALock(productId);
-            }catch (Exception e) {
-							System.out.println(e.getMessage());
-						}  finally {
-              latch.countDown();
-            }
-        });
-    }
+	private static final int PRODUCT_ID = 1;
 
-		latch.await();
-		
-		Product product = productRepository.findById(1);
-		if (product == null)
-			throw new NoSuchElementException("Failed to find product.");
+	private static final int STOCK = 10;
 
-    assertEquals(product.getStock(),0);
+	private static final int THREAD_COUNT = 15;
+
+	private static final Map<String, Object> TEST_RESULT_COUNT_INIT_MAP = Map.of("succeedCount", "0", "failedCount", "0");
+
+	@BeforeEach
+	void initProductStock() throws JsonProcessingException { 
+		productService.updateProuctStock(PRODUCT_ID, STOCK);
 	}
 
 	@Test
-	void testOrderWithJPALockAndRedis() throws InterruptedException  {
-		int productId = 1;
-		
-		int threadCount = 300;
+	@DisplayName("JPA Lock만 사용하는 주문 테스트 - 테스트 1번")
+	void testOrderWithOnlyJPALock() throws InterruptedException {
+		int testId = 1;
+		String key = "TestResultCount:"+testId;
+		redisTemplate.opsForHash().putAll(key, TEST_RESULT_COUNT_INIT_MAP);
 
-    ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-    CountDownLatch latch = new CountDownLatch(threadCount);
+		ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT);
+		CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
 
-    for (int i = 1; i <= threadCount; i++) {
-        executorService.submit(() -> {
-            try {
-              orderService.orderWithOnlyJPALock(productId);
-            }catch (Exception e) {
-							System.out.println(e.getMessage());
-						}  finally {
-              latch.countDown();
-            }
-        });
-    }
+		for (int i = 1; i <= THREAD_COUNT; i++) {
+			executorService.submit(() -> {
+				boolean isSucceed = false;
+				try {
+					orderService.orderWithOnlyJPALock(PRODUCT_ID);
+					isSucceed = true;
+				} catch (Exception e) {
+					System.out.println(e.getMessage());
+				} finally {
+					updateOrderHisCount(testId, isSucceed);
+					latch.countDown();
+				}
+			});
+		}
 
 		latch.await();
+
 		
-		Product product = productRepository.findById(1);
-		if(product == null)
-  			throw new NoSuchElementException();
-  			
-    assertEquals(product.getStock(),0);
+		String succeedCount = (String) redisTemplate.opsForHash().get(key, "succeedCount");
+		assertEquals(Integer.parseInt(succeedCount), STOCK);
+	}
+
+	void updateOrderHisCount(int testId, boolean isSucceed) {
+		String key = "TestResultCount:" + testId;
+		String columnName = isSucceed ? "succeedCount" : "failedCount";
+		redisTemplate.opsForHash().increment(key, columnName, 1);
+	}
+
+	@Test
+	@DisplayName("JPA Lock과 Redis(lock 없이) 사용하는 주문 테스트 - 테스트 2번")
+	void testOrderWithJPALockAndRedis() throws InterruptedException {
+		int testId = 2;
+		String key = "TestResultCount:" + testId;
+		redisTemplate.opsForHash().putAll(key, TEST_RESULT_COUNT_INIT_MAP);
+
+		ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT);
+		CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
+
+		for (int i = 1; i <= THREAD_COUNT; i++) {
+			executorService.submit(() -> {
+				boolean isSucceed = false;
+				try {
+					orderService.orderWithJPALockAndRedis(PRODUCT_ID);
+					isSucceed = true;
+				} catch (Exception e) {
+					System.out.println(e.getMessage());
+				} finally {
+					updateOrderHisCount(testId, isSucceed);
+					latch.countDown();
+				}
+			});
+		}
+
+		latch.await();
+
+		String succeedCount = (String) redisTemplate.opsForHash().get(key, "succeedCount");
+		assertEquals(Integer.parseInt(succeedCount), STOCK);
 	}
 
 	@Test
