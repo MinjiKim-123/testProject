@@ -32,4 +32,16 @@ public class Product{
 	private Integer price;
 	
 	private Integer stock;
+	
+	public void decreaseStock() {
+		if(this.stock <= 0)
+			throw new IllegalArgumentException("This product is out of stock.");
+		
+		this.stock--;
+	}
+	
+	public void increaseStock() {
+		this.stock++;
+	}
+	
 }

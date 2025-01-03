@@ -10,6 +10,22 @@ import jakarta.persistence.LockModeType;
 
 public interface ProductRepository extends CrudRepository<Product, Integer>{
 
+
+	/**
+	 * 비관적 락을 적용한 특정 제품 조회
+	 * @param productId
+	 * @param stock
+	 * @return
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	Product findById(int productId);
+	
+	/**
+	 * 비관적 락을 적용한 특정 제품 조회
+	 * @param productId
+	 * @param stock
+	 * @return
+	 */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Product findByIdAndStockGreaterThan(int productId, int stock);
 

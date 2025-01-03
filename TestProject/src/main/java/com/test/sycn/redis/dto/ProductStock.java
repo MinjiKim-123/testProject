@@ -1,8 +1,5 @@
-package com.test.sync.entity;
+package com.test.sycn.redis.dto;
 
-import org.springframework.data.redis.core.RedisHash;
-
-import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,12 +9,20 @@ import lombok.NoArgsConstructor;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@RedisHash(value = "productId")
 public class ProductStock {
 
-  @Id
 	private Integer id;
 	
 	private Integer stock;
 	
+	public void decreaseStock() {
+		if(this.stock <= 0)
+			throw new IllegalArgumentException("This product is out of stock.");
+		
+		this.stock--;
+	}
+	
+	public void increaseStock() {
+		this.stock++;
+	}
 }
