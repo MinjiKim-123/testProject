@@ -20,6 +20,14 @@ public class ProductService {
 	
 	private final CommonService  commonService;
 	
+	/**
+	 * 상품 등록
+	 * @param name 상품명
+	 * @param price 가격
+	 * @param stock 재고
+	 * @return 등록한 상품 아이디
+	 * @throws JsonProcessingException
+	 */
 	@Transactional
 	public int insertProuct(String name, int price, int stock) throws JsonProcessingException {
 		Product product = productRepository.save(Product.builder()
@@ -36,6 +44,12 @@ public class ProductService {
 		return productId;
 	}
 	
+	/**
+	 * 상품 재고 수정
+	 * @param productId 상품아이디
+	 * @param stock 재고
+	 * @throws JsonProcessingException
+	 */
 	@Transactional
 	public void updateProuctStock(int productId, int stock) throws JsonProcessingException {		
 		Product product = productRepository.findById(productId);
@@ -45,7 +59,7 @@ public class ProductService {
 					.build();
 		}
   	product.setStock(stock);
-  	saveProductStockToRedis(productId, stock);
+  	saveProductStockToRedis(productId, stock); //redis에도 해당 데이터 반영
 	}
 
 	

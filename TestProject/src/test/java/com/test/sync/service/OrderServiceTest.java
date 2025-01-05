@@ -2,7 +2,6 @@ package com.test.sync.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -19,7 +18,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.test.sync.SyncApplication;
 
+import lombok.extern.slf4j.Slf4j;
+
 @SpringBootTest(classes = SyncApplication.class)
+@Slf4j
 class OrderServiceTest {
 
 	@Autowired
@@ -61,7 +63,7 @@ class OrderServiceTest {
 					orderService.orderWithOnlyJPALock(PRODUCT_ID);
 					isSucceed = true;
 				} catch (Exception e) {
-					System.out.println(e.getMessage());
+					log.error(e.getMessage());
 				} finally {
 					updateOrderHisCount(testId, isSucceed);
 					latch.countDown();
@@ -71,7 +73,6 @@ class OrderServiceTest {
 
 		latch.await();
 
-		
 		String succeedCount = (String) redisTemplate.opsForHash().get(key, "succeedCount");
 		assertEquals(Integer.parseInt(succeedCount), STOCK);
 	}
@@ -99,7 +100,7 @@ class OrderServiceTest {
 					orderService.orderWithJPALockAndRedis(PRODUCT_ID);
 					isSucceed = true;
 				} catch (Exception e) {
-					System.out.println(e.getMessage());
+					log.error(e.getMessage());
 				} finally {
 					updateOrderHisCount(testId, isSucceed);
 					latch.countDown();

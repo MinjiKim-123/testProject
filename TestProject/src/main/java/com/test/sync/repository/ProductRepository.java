@@ -29,11 +29,15 @@ public interface ProductRepository extends CrudRepository<Product, Integer>{
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Product findByIdAndStockGreaterThan(int productId, int stock);
 
+	/**
+	 * 상품을 락없이 조회
+	 * @param productId 상품 아이디
+	 * @return 상품 정보
+	 */
 	@Query("""
 			select p
 			from	Product p
 			where	p.id=:productId
-				and p.stock >:stock
 			""")
-	Product findByIdAndStockGreaterThanWithOutLock(int productId, int stock);
+	Product findByIdWithoutLock(int productId);
 }
