@@ -111,7 +111,7 @@ public class OrderService {
 	}
 	
 	/**
-	 * jpa(lock x)과 redis를 사용하는 주문 
+	 * jpa(lock x)과 redisson lock을 사용하는 주문  
 	 * @throws JsonProcessingException 
 	 */
 	@Transactional

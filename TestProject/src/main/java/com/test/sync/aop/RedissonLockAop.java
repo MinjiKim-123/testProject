@@ -7,15 +7,18 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.stereotype.Component;
 
 import com.test.sync.util.RedissonLockKeyGenerator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+
 @Aspect
 @RequiredArgsConstructor
 @Slf4j
+@Component
 public class RedissonLockAop {
 
 	private final RedissonClient redissonClient;
@@ -26,14 +29,17 @@ public class RedissonLockAop {
     Method method = methodSignature.getMethod();
     RedissonLock redissonLock = method.getAnnotation(RedissonLock.class);
     
+    //lock 키 생성
     String lockKey = RedissonLockKeyGenerator.generate(methodSignature.getName(), methodSignature.getParameterNames(), joinPoint.getArgs(), redissonLock.keyName());
     RLock lock = redissonClient.getLock(lockKey);
     
     try {
 			boolean isSucceed = lock.tryLock(redissonLock.waitTime(), redissonLock.leaseTime(), redissonLock.timeUnit());
 			log.info("Redisson lock get tried. Result : " + isSucceed);
-			if(!isSucceed)
+			if(!isSucceed) {
+				log.info("trylock failed");
 				return false;
+			}
 			
 			return joinPoint.proceed();
 		} catch (InterruptedException e) {

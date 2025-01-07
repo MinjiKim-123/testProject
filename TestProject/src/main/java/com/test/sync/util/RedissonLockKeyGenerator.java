@@ -11,7 +11,7 @@ public class RedissonLockKeyGenerator {
 	private static final String LOCK_KEY_PREFIX = "LOCK_";
 	
 	/**
-	 * 생성
+	 * lock 키 생성
 	 * @param methodName
 	 * @param parameterNames
 	 * @param args
