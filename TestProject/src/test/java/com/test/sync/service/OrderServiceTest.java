@@ -54,7 +54,6 @@ class OrderServiceTest {
 	@AfterEach
 	void printRunTime() {
 		long endTime = System.currentTimeMillis();
-		System.out.println("시작 시간" + startTime);
 		long runTime = endTime - startTime;
 		System.out.println("실행시간 : " + runTime);
 	}

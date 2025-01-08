@@ -8,13 +8,14 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
-
-import com.test.sync.util.RedissonLockKeyGenerator;
-
+import com.test.sync.util.RedisLockKeyGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 
+/**
+ * Redisson annotation용 AOP
+ */
 @Aspect
 @RequiredArgsConstructor
 @Slf4j
@@ -30,7 +31,7 @@ public class RedissonLockAop {
     RedissonLock redissonLock = method.getAnnotation(RedissonLock.class);
     
     //lock 키 생성
-    String lockKey = RedissonLockKeyGenerator.generate(methodSignature.getName(), methodSignature.getParameterNames(), joinPoint.getArgs(), redissonLock.keyName());
+    String lockKey = RedisLockKeyGenerator.generate(methodSignature.getName(), methodSignature.getParameterNames(), joinPoint.getArgs(), redissonLock.keyName());
     RLock lock = redissonClient.getLock(lockKey);
     
     try {

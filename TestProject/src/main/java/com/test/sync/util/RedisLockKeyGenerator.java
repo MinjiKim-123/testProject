@@ -3,10 +3,10 @@ package com.test.sync.util;
 import lombok.experimental.UtilityClass;
 
 /**
- * redisson lock key 생성을 위한 유틸리티 클래스
+ * redis lock key 생성을 위한 유틸리티 클래스
  */
 @UtilityClass
-public class RedissonLockKeyGenerator {
+public class RedisLockKeyGenerator {
 
 	private static final String LOCK_KEY_PREFIX = "LOCK_";
 	
