@@ -13,11 +13,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
-
-	private static final Logger HANDLER_LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 	
 	/**
 	 * validation 오류
@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
 		if (errorMessage.isBlank())
 			errorMessage = "입력 값을 확인해주세요.";
 		
-		HANDLER_LOGGER.error(errorMessage, ex);
+		log.error(errorMessage, ex);
 	}
 	
 	/**
@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler
 	public void handlerException(Exception ex){
-		HANDLER_LOGGER.error(ex.getMessage(), ex);
+		log.error(ex.getMessage(), ex);
 	}
 	
 }

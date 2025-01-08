@@ -36,9 +36,9 @@ class OrderServiceTest {
 
 	int productId = 1;
 
-	int stock = 10;
+	int stock = 100;
 
-	int threadCount = 15;
+	int threadCount = 100;
 
 	long startTime;
 	
@@ -54,7 +54,8 @@ class OrderServiceTest {
 	@AfterEach
 	void printRunTime() {
 		long endTime = System.currentTimeMillis();
-		long runTime = startTime - endTime;
+		System.out.println("시작 시간" + startTime);
+		long runTime = endTime - startTime;
 		System.out.println("실행시간 : " + runTime);
 	}
 	
@@ -81,7 +82,6 @@ class OrderServiceTest {
 	}
 	
 	@Test
-@Disabled
 	@DisplayName("JPA Lock만 사용하는 주문 테스트 - 테스트 1번")
 	void testOrderWithOnlyJPALock() throws InterruptedException {
 		int testId = 1;
@@ -112,7 +112,6 @@ class OrderServiceTest {
 	}
 
 	@Test
-	@Disabled
 	@DisplayName("JPA Lock과 Redis(lock 없이) 사용하는 주문 테스트 - 테스트 2번")
 	void testOrderWithJPALockAndRedis() throws InterruptedException {
 		int testId = 2;
@@ -155,6 +154,36 @@ class OrderServiceTest {
 				boolean isSucceed = false;
 				try {
 					orderService.orderWithJPALockAndRedissonLock(productId);
+					isSucceed = true;
+				} catch (Exception e) {
+					System.out.println(e.getMessage());
+				} finally {
+					updateOrderHisCount(testId, isSucceed);
+					latch.countDown();
+				}
+			});
+		}
+
+		latch.await();
+
+		String key = "TestResultCount:" + testId;
+		String succeedCount = (String) redisTemplate.opsForHash().get(key, "succeedCount");
+		assertEquals(Integer.parseInt(succeedCount), stock);
+	}
+
+	@Test
+	@DisplayName("JPA(lock x)와 Redisson lock을 사용하는 주문 테스트 - 테스트 4번")
+	void testOrderWithOutJPALockAndRedissonLock() throws InterruptedException {
+		int testId = 4;
+
+		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+		CountDownLatch latch = new CountDownLatch(threadCount);
+
+		for (int i = 1; i <= threadCount; i++) {
+			executorService.submit(() -> {
+				boolean isSucceed = false;
+				try {
+					orderService.orderWithoutJPALockAndRedissonLock(productId);
 					isSucceed = true;
 				} catch (Exception e) {
 					System.out.println(e.getMessage());
