@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -36,18 +37,15 @@ class OrderServiceTest {
 
 	int productId = 1;
 
-	int stock = 100;
+	int stock = 10;
 
 	int threadCount = 100;
 
 	long startTime;
 	
-	/**
-	 * rdb 상품 재고 초기화
-	 */
+	
 	@BeforeEach
 	void initProductstock() throws JsonProcessingException { 
-		productService.updateProuctStock(productId, stock);
 		startTime = System.currentTimeMillis();
 	}
 	
@@ -80,20 +78,26 @@ class OrderServiceTest {
 		redisTemplate.opsForHash().increment(key, columnName, 1);
 	}
 	
-	@Test
-	@DisplayName("JPA Lock만 사용하는 주문 테스트 - 테스트 1번")
-	void testOrderWithOnlyJPALock() throws InterruptedException {
-		int testId = 1;
-
+	/**
+	 * 테스트 실행 (모든 테스트의 실행 메소드 외 기본 내용이 같으므로 공통 메소드로 추출) 
+	 * @param testId 테스트 아이디 겸 상품 아이디
+	 * @param function 실제 테스트를 진행할 메소드
+	 * @return 주문 성공 개수
+	 * @throws InterruptedException
+	 * @throws JsonProcessingException 
+	 */
+	private String runTest(int testId, Function<Integer, Boolean> function) throws InterruptedException, JsonProcessingException {
+		//상품 재고 초기화
+		productService.updateProuctStock(testId, stock);
+		
 		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
 		CountDownLatch latch = new CountDownLatch(threadCount);
-
+		
 		for (int i = 1; i <= threadCount; i++) {
 			executorService.submit(() -> {
 				boolean isSucceed = false;
 				try {
-					orderService.orderWithOnlyJPALock(productId);
-					isSucceed = true;
+					isSucceed = function.apply(testId); //테스트할 함수 실행
 				} catch (Exception e) {
 					System.out.println(e.getMessage());
 				} finally {
@@ -102,108 +106,62 @@ class OrderServiceTest {
 				}
 			});
 		}
-
+		
 		latch.await();
-
+		
 		String key = "TestResultCount:"+testId;
-		String succeedCount = (String) redisTemplate.opsForHash().get(key, "succeedCount");
+		return (String) redisTemplate.opsForHash().get(key, "succeedCount");
+	}
+	
+
+	@Test
+	@DisplayName("JPA Lock만 사용하는 주문 테스트 - 테스트 1번")
+	void testOrderWithOnlyJPALock() throws InterruptedException, JsonProcessingException {
+		int testId = 1;
+		String succeedCount = runTest(testId,orderService::orderWithOnlyJPALock);
 		assertEquals(Integer.parseInt(succeedCount), stock);
 	}
 
-	@Test
+	@Test	
 	@DisplayName("JPA Lock과 Redis(lock 없이) 사용하는 주문 테스트 - 테스트 2번")
-	void testOrderWithJPALockAndRedis() throws InterruptedException {
+	void testOrderWithJPALockAndRedis() throws InterruptedException, JsonProcessingException {
 		int testId = 2;
-
-		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-		CountDownLatch latch = new CountDownLatch(threadCount);
-
-		for (int i = 1; i <= threadCount; i++) {
-			executorService.submit(() -> {
-				boolean isSucceed = false;
-				try {
-					orderService.orderWithJPALockAndRedis(productId);
-					isSucceed = true;
-				} catch (Exception e) {
-					System.out.println(e.getMessage());
-				} finally {
-					updateOrderHisCount(testId, isSucceed);
-					latch.countDown();
-				}
-			});
-		}
-
-		latch.await();
-		
-		String key = "TestResultCount:" + testId;
-		String succeedCount = (String) redisTemplate.opsForHash().get(key, "succeedCount");
+		String succeedCount = runTest(testId, orderService::orderWithoutJPALockAndRedis);
 		assertEquals(Integer.parseInt(succeedCount), stock);
 	}
 
 	@Test
 	@DisplayName("JPA Lock과 Redisson lock을 사용하는 주문 테스트 - 테스트 3번")
-	void testOrderWithJPALockAndRedissonLock() throws InterruptedException {
+	void testOrderWithJPALockAndRedissonLock() throws InterruptedException, JsonProcessingException{
 		int testId = 3;
-
-		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-		CountDownLatch latch = new CountDownLatch(threadCount);
-
-		for (int i = 1; i <= threadCount; i++) {
-			executorService.submit(() -> {
-				boolean isSucceed = false;
-				try {
-					orderService.orderWithJPALockAndRedissonLock(productId);
-					isSucceed = true;
-				} catch (Exception e) {
-					System.out.println(e.getMessage());
-				} finally {
-					updateOrderHisCount(testId, isSucceed);
-					latch.countDown();
-				}
-			});
-		}
-
-		latch.await();
-
-		String key = "TestResultCount:" + testId;
-		String succeedCount = (String) redisTemplate.opsForHash().get(key, "succeedCount");
+		String succeedCount = runTest(testId, orderService::orderWithJPALockAndRedissonLock);
 		assertEquals(Integer.parseInt(succeedCount), stock);
 	}
 
 	@Test
 	@DisplayName("JPA(lock x)와 Redisson lock을 사용하는 주문 테스트 - 테스트 4번")
-	void testOrderWithOutJPALockAndRedissonLock() throws InterruptedException {
+	void testOrderWithOutJPALockAndRedissonLock() throws InterruptedException, JsonProcessingException {
 		int testId = 4;
-
-		ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-		CountDownLatch latch = new CountDownLatch(threadCount);
-
-		for (int i = 1; i <= threadCount; i++) {
-			executorService.submit(() -> {
-				boolean isSucceed = false;
-				try {
-					orderService.orderWithoutJPALockAndRedissonLock(productId);
-					isSucceed = true;
-				} catch (Exception e) {
-					System.out.println(e.getMessage());
-				} finally {
-					updateOrderHisCount(testId, isSucceed);
-					latch.countDown();
-				}
-			});
-		}
-
-		latch.await();
-
-		String key = "TestResultCount:" + testId;
-		String succeedCount = (String) redisTemplate.opsForHash().get(key, "succeedCount");
+		String succeedCount = runTest(testId, orderService::orderWithoutJPALockAndRedissonLock);
 		assertEquals(Integer.parseInt(succeedCount), stock);
 	}
 
 	@Test
 	@Disabled
-	void testOrderWithJPALockAndLettuceLock() {
-		fail("Not yet implemented");
+	@DisplayName("jpa lock과 lettuce lock을 사용하는 주문 테스트 - 테스트 5번")
+	void testOrderWithJPALockAndLettuceLock() throws InterruptedException, JsonProcessingException {
+		int testId = 5; 
+		String succeedCount = runTest(testId, orderService::orderWithJPALockAndLettuceLock);
+		assertEquals(Integer.parseInt(succeedCount), stock);
+	}
+
+	@Test
+	@Disabled
+	@DisplayName("jpa(lock x)와 lettuce lock을 사용하는 주문 테스트 - 테스트 6번")
+	void testOrderWithOutJPALockAndLettuceLock() throws InterruptedException, JsonProcessingException {
+		int testId = 6; 
+		String succeedCount = runTest(testId, orderService::orderWithOutJPALockAndLettuceLock);
+		assertEquals(Integer.parseInt(succeedCount), stock);
 	}
 
 }
