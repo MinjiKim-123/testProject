@@ -3,8 +3,8 @@ Redis와 JPA Lock을 사용하여 동시성 테스트를 진행하는 프로젝�
 
 
 # 목차
-- [JPA Lock] (#jpa-lock)
-- [Redis Lock] (#redis-lock)
+- [JPA Lock](#jpa-lock)
+- [Redis Lock](#redis-lock)
 
 
 # JPA Lock
