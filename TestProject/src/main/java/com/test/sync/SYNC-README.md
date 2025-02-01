@@ -1,12 +1,6 @@
 # sync project
 Redis와 JPA Lock을 사용하여 동시성 테스트를 진행하는 프로젝트입니다.
 
-
-# 목차
-- [JPA Lock](#jpa-lock)
-- [Redis Lock](#redis-lock)
-
-
 # JPA Lock
 - ### 낙관적 락(Optimistic Lock) <br/>
 데이터 갱신시 충돌이 발생하지 않을 것이라고 낙관적으로 보며 잠금을 거는 기법.<br/>
@@ -30,3 +24,56 @@ DB Level에서 레코드 자체에 Lock을 걸기 때문에 성능 저하 및 De
 
 
 # Redis Lock
+- ### Lettuce Lock<br/>
+Lettuce는 Spring redis의 기본 라이브러리.<br/>
+스레드가 lock를 획득하기 위해 반복적으로 확인하며 시도하는<br/>
+<strong>_spin lock_</strong>방식이기 때문에 락 획득을 위한 재시도 로직 구현이 필요하다.
+```
+try {
+    int maxTryTime = 10; //최대 시도 횟수를 10번으로 지정
+    boolean isGetLock = false;
+    while (!isGetLock && maxTryTime > 0) { // lock을 얻을때까지 실행
+      isGetLock = redisTemplate.opsForValue().setIfAbsent(lockKey, "lock", lettuceLock.timeout(),
+          lettuceLock.timeUnit()); // 값이 없으면 set하는 setnx 명령어 사용
+      maxTryTime--;
+    }
+    if(!isGetLock) { //최대 시도 횟수 내에 lock을 get하지 못 했을 경우 실패로 종료
+      log.error("get lettuce lock failed.");
+      return false;
+    }
+    return joinPoint.proceed();
+  } finally {
+    redisTemplate.delete(lockKey); // unlock처리
+    log.info("Lettuce lock unlocked.");
+}
+```
+
+- ### Redisson Lock<br/>
+Redisson Lock은 pub/sub 방식으로 동작.<br/>
+Redisson은 RLock이라는 인터페이스를 제공하기 때문에 쉽게 구현이 가능하고,<br/>
+pub/sub 방식을 통해 지정한 waitTime까지 기다리며 락 획득 가능 시점에 락을 획득하기 때문에<br/>
+지속적으로 락 획득 요청을 보내는 Lettuce의 spin lock방식보다는 redis에 부하가 덜 하다는 장점이 있다. 
+```
+ RLock lock = redissonClient.getLock(lockKey);
+    
+try {
+    boolean isSucceed = lock.tryLock(redissonLock.waitTime(), redissonLock.leaseTime(), redissonLock.timeUnit()); //lock 획득 시도
+    log.info("Redisson lock get tried. Result : " + isSucceed);
+    if(!isSucceed) { //waitTime내에 lock을 획득 실패했을 경우
+      log.info("trylock failed");
+      return false;
+    }
+    
+    return joinPoint.proceed();
+} catch (InterruptedException e) {
+    log.error(e.getMessage(), e);
+    throw e;
+}finally {
+    try {
+      lock.unlock(); //unlock처리
+      log.info("Redisson unlocked.");
+    }catch (Exception e) {
+      log.error("Redisson unlock failed.", e);
+    }
+}
+```
