@@ -35,11 +35,16 @@ public class LettuceLockAop {
 
 		try {
 			int maxTryTime = 10; //최대 시도 횟수를 10번으로 지정
-			boolean isGetLock = false;
+			boolean isGetLock = false; //lock 획득 성공 여부
 			while (!isGetLock && maxTryTime > 0) { // lock을 얻을때까지 실행
 				isGetLock = redisTemplate.opsForValue().setIfAbsent(lockKey, "lock", lettuceLock.timeout(),
 						lettuceLock.timeUnit()); // 값이 없으면 set하는 setnx 명령어 사용
 				maxTryTime--;
+			}
+			
+			if(!isGetLock) {
+				log.error("get lettuce lock failed.");
+				return false;
 			}
 			
 			return joinPoint.proceed();
